@@ -57,15 +57,14 @@ class TSPCallback:
         values = model.cbGetSolution(self.x)
         edges = [(i, j) for (i, j), v in values.items() if v > 0. and i != j]
         
-        # if not edges:
-        #     return
+        if not edges:
+            return
             
         tour = shortest_subtour(edges)
         if len(tour) < len(self.nodes):
             # add subtour elimination constraint for every pair of cities in tour
             model.cbLazy(
-                gp.quicksum(self.x[i, j] + self.x[j, i] for i, j in combinations(tour, 2))
-                <= len(tour) - 1
+                gp.quicksum(self.x[i, j]  + self.x[j, i] for i, j in combinations(tour, 2)) <= len(tour) - 1
             )
 
 class solver_343420_331202(AbstractSolver):
@@ -145,7 +144,7 @@ class solver_343420_331202(AbstractSolver):
             gp.quicksum(Y[j,0] for j in range(1, n_deposits + 1)) == 1,
             "company_incoming"
         )
-        
+
         # entries = exits for each deposit
         for i in range(1, n_deposits + 1):
             model.addConstr(
@@ -168,7 +167,7 @@ class solver_343420_331202(AbstractSolver):
         
         # subtour elimination with callback
         model.Params.LazyConstraints = 1
-        nodes = list(range(n_deposits + 1))  # all possible nodes
+        nodes = list(range(1, n_deposits + 1))  # all possible deposits
         cb = TSPCallback(nodes, Y)
         model.optimize(cb)
         
