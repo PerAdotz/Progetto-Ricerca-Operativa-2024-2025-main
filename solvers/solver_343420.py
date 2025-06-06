@@ -100,10 +100,10 @@ class solver_343420(AbstractSolver):
         construction_cost = gp.quicksum(X[i] * weights['construction'] for i in range(n_deposits))
         missed_supermarket_cost = gp.quicksum(Z[i] * weights['missed_supermarket'] for i in range(n_supermarkets))
         #y[0,0] if there are no deposits, it means the company is not serving deposit
-        travel_cost = gp.quicksum(Y[i,j] * distances[i,j] * weights['travel'] + Y[0,0] for i in range(n_deposits + 1) for j in range(n_deposits + 1))
+        travel_cost = gp.quicksum(Y[i,j] * distances[i,j] * weights['travel'] for i in range(n_deposits + 1) for j in range(n_deposits + 1))
 
         
-        model.setObjective(construction_cost + missed_supermarket_cost + travel_cost, GRB.MINIMIZE)
+        model.setObjective(construction_cost + missed_supermarket_cost + travel_cost  + Y[0,0] , GRB.MINIMIZE)
         
         #-- constraints --
         
@@ -151,6 +151,10 @@ class solver_343420(AbstractSolver):
         #no self-loops
         for i in range(n_deposits + 1):
             model.addConstr(Y[i,i] == 0, f"no_self_loop_{i}")
+
+        # avoid to go from the company to a deposit not built 
+        for j in range(1, n_deposits + 1):
+            model.addConstr(Y[0,j] <= X[j-1], f"company_to_deposit_{j}")
 
         
         # subtour elimination with callback
