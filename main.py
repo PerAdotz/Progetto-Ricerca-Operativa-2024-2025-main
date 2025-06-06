@@ -33,7 +33,7 @@ instance_name = 'dummy_problem'
 
 inst = Instance(instance_name)
 env = Environment(inst)
-solver = solver_343420(env)
+solver = solver_343420_331202(env)
 
 X, Y = solver.solve()
 

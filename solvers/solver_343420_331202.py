@@ -55,10 +55,10 @@ class TSPCallback:
         constraints to cut off the current solution if subtours are found.
         Assumes we are at MIPSOL."""
         values = model.cbGetSolution(self.x)
-        edges = [(i, j) for (i, j), v in values.items() if v > 0.5 and i != j]
+        edges = [(i, j) for (i, j), v in values.items() if v > 0. and i != j]
         
-        if not edges:
-            return
+        # if not edges:
+        #     return
             
         tour = shortest_subtour(edges)
         if len(tour) < len(self.nodes):
@@ -68,7 +68,7 @@ class TSPCallback:
                 <= len(tour) - 1
             )
 
-class solver_343420(AbstractSolver):
+class solver_343420_331202(AbstractSolver):
     def __init__(self, env):
         super().__init__(env)
         self.name = 'OR_project_problem'
