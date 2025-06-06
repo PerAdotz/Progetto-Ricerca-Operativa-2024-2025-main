@@ -9,6 +9,7 @@ def shortest_subtour(edges):
     """Given a list of edges, return the shortest subtour (as a list of nodes)
     found by following those edges. It is assumed there is exactly one 'in'
     edge and one 'out' edge for every node represented in the edge list."""
+
     # Create a mapping from each node to its neighbours
     node_neighbors = defaultdict(list)
     for i, j in edges:
@@ -54,7 +55,7 @@ class TSPCallback:
         constraints to cut off the current solution if subtours are found.
         Assumes we are at MIPSOL."""
         values = model.cbGetSolution(self.x)
-        edges = [(i, j) for (i, j), v in values.items() if v > 0.5]
+        edges = [(i, j) for (i, j), v in values.items() if v > 0.5 and i != j]
         
         if not edges:
             return
@@ -62,7 +63,10 @@ class TSPCallback:
         tour = shortest_subtour(edges)
         if len(tour) < len(self.nodes):
             # add subtour elimination constraint for every pair of cities in tour
-            model.cbLazy(gp.quicksum(self.x[i, j] for i, j in combinations(tour, 2)) <= len(tour) - 1)
+            model.cbLazy(
+                gp.quicksum(self.x[i, j] + self.x[j, i] for i, j in combinations(tour, 2))
+                <= len(tour) - 1
+            )
 
 class solver_343420(AbstractSolver):
     def __init__(self, env):
@@ -92,6 +96,11 @@ class solver_343420(AbstractSolver):
         # location 0 is the company, locations 1 to n_deposits are deposits
         Y = model.addVars(n_deposits + 1, n_deposits + 1, vtype=GRB.BINARY, name="route")
 
+        # Y_keys = [(i, j) for i in range(n_deposits + 1) for j in range(n_deposits + 1) if i != j]
+        # Y = model.addVars(Y_keys, vtype=GRB.BINARY, name="route")
+        # travel_cost = gp.quicksum(Y[i,j] * distances[i,j] * weights['travel'] for i, j in Y_keys)
+
+
         # Z[s] = 1 if supermarket s is NOT served by at least one deposit, 0 otherwise
         Z = model.addVars(n_supermarkets, vtype=GRB.BINARY, name="missed")
         
@@ -103,7 +112,7 @@ class solver_343420(AbstractSolver):
         travel_cost = gp.quicksum(Y[i,j] * distances[i,j] * weights['travel'] for i in range(n_deposits + 1) for j in range(n_deposits + 1))
 
         
-        model.setObjective(construction_cost + missed_supermarket_cost + travel_cost  + Y[0,0] , GRB.MINIMIZE)
+        model.setObjective(construction_cost + missed_supermarket_cost + travel_cost + Y[0,0] , GRB.MINIMIZE)
         
         #-- constraints --
         
