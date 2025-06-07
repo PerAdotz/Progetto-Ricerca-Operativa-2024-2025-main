@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 
 def plot_solution_graph(Y_sol):
     n = Y_sol.shape[0]
-    
     # Create a directed graph
     G = nx.DiGraph()
 
