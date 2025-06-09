@@ -207,18 +207,6 @@ class solver_343420_331202(AbstractSolver):
                 (1 - Z[s]) <= gp.quicksum(X[i] * service[i,s] for i in range(n_deposits)),
                 f"supermarket_service_{s}"
             )
-        
-        # only travel to or from a deposit if it is built
-        # x[i-1] because array X start from 0 but the deposits start from 1
-        for i in range(1, n_deposits + 1):  # deposit locations (1 to n_deposits)
-            # uutgoing
-            model.addConstr( gp.quicksum(Y[i,j] for j in range(n_deposits + 1) if j != i) <= X[i-1],
-                f"outgoing_deposit_{i}"
-            )
-            # ingoing
-            model.addConstr(gp.quicksum(Y[j,i] for j in range(n_deposits + 1) if j != i) <= X[i-1],
-                f"incoming_deposit_{i}"
-            )
 
         # flow conservation constraints
         # company (location 0): one outgoing, one incoming connection if any depositis are built
@@ -232,6 +220,8 @@ class solver_343420_331202(AbstractSolver):
             "company_incoming"
         )
 
+        # only travel to or from a deposit if it is built
+        # x[i-1] because array X start from 0 but the deposits start from 1
         # entries = exits for each deposit
         # number of outgoing archs = 1 (if deposit is built -> X[i-1] = 1), 0 (if deposit is not built -> X[i-1] = 0)
         # number of ingoing archs = 1 (if deposit is built -> X[i-1] = 1), 0 (if deposit is not built -> X[i-1] = 0)
