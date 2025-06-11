@@ -132,7 +132,7 @@ class TSPCallback:
             try:
                 self.eliminate_subtours(model)
             except Exception as e:
-                print(f"Exception in callback: {e}")
+                print(f"Exception occurred in MIPSOL callback: {e}")
                 model.terminate()
     
     def eliminate_subtours(self, model):
@@ -140,20 +140,13 @@ class TSPCallback:
         constraints to cut off the current solution if subtours are found.
         Assumes we are at MIPSOL."""
         values = model.cbGetSolution(self.y_vars)
-        
-        # Extract active edges
-        edges = []
-        for (i, j), val in values.items():
-            if val > 0.5:
-                edges.append((i, j))
-        
+        edges = [(i, j) for (i, j), v in values.items() if v > 0.5]
         # Find subtours (cycles not including company node 0)
         subtours = shortest_subtour(edges, company_node=0)
         
-        # Add lazy constraints to eliminate each subtour
         for subtour in subtours:
             if len(subtour) >= 2:
-                # Subtour elimination constraint
+                # add subtour elimination constraint
                 model.cbLazy(
                     gp.quicksum(self.y_vars[i, j] for i in subtour for j in subtour if i != j and (i, j) in self.y_vars) <= len(subtour) - 1
                 )
@@ -161,8 +154,16 @@ class TSPCallback:
 class solver_343420_331202(AbstractSolver):
     def __init__(self, env):
         super().__init__(env)
-        self.name = 'OR_project_problem'
+        self.name = 'solver_343420_331202'
     
+    def print_solution_edges(self,Y_sol):
+        n = Y_sol.shape[0]
+        print(f"Solution model {self.name}:")
+        for i in range(n):
+            for j in range(n):
+                if Y_sol[i][j] == 1:
+                    print(f"{i} -> {j}")
+
     def solve(self):
         super().solve()
         
@@ -175,7 +176,6 @@ class solver_343420_331202(AbstractSolver):
         n_supermarkets = service.shape[1]
         
         model = gp.Model(self.name)
-        model.setParam('OutputFlag', 1)  # Enable output
         
         #-- decision variables--
 
@@ -252,12 +252,13 @@ class solver_343420_331202(AbstractSolver):
         model.optimize(cb)
         
         if model.status == GRB.OPTIMAL:
-            print(f"Optimal solution found with cost: {model.objVal}")
+            print(f"\nOptimal solution found with cost: {model.objVal}")
             
             # get the values of X from the solver
             X_sol = []
             for i in range(n_deposits):
-                X_sol.append(round(X[i].x))
+                # X_sol.append(round(X[i].x))
+                X_sol.append(X[i].x)
 
             X_sol = np.array(X_sol, dtype=int)
 
@@ -267,8 +268,10 @@ class solver_343420_331202(AbstractSolver):
             for i in range(n_deposits + 1):
                 for j in range(n_deposits + 1):
                     if i != j and (i, j) in Y:
-                        Y_sol[i][j] = round(Y[i, j].x)
+                        # Y_sol[i][j] = round(Y[i, j].x)
+                        Y_sol[i][j] = Y[i, j].x
             
+            self.print_solution_edges(Y_sol)
             return X_sol, Y_sol
             
         else:
