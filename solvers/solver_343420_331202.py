@@ -188,7 +188,7 @@ class solver_343420_331202(AbstractSolver):
             # get the values of X from the solver
             X_sol = []
             for i in range(n_deposits):
-                X_sol.append(X[i].x)
+                X_sol.append(round(X[i].x))
 
             X_sol = np.array(X_sol, dtype=int)
 
@@ -198,7 +198,7 @@ class solver_343420_331202(AbstractSolver):
             for i in range(n_deposits + 1):
                 for j in range(n_deposits + 1):
                     if i != j and (i, j) in Y:
-                        Y_sol[i][j] = Y[i, j].x
+                        Y_sol[i][j] = round(Y[i, j].x)
             
             self.print_solution_edges(Y_sol)
             return X_sol, Y_sol
