@@ -3,74 +3,7 @@ import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
 from collections import defaultdict
-from itertools import combinations
 
-'''
-#this solution get us as optimal cost 409
-def shortest_subtour(edges):
-    """Given a list of edges, return the shortest subtour (as a list of nodes)
-    found by following those edges. It is assumed there is exactly one 'in'
-    edge and one 'out' edge for every node represented in the edge list."""
-
-    # Create a mapping from each node to its neighbours
-    node_neighbors = defaultdict(list)
-    for i, j in edges:
-        node_neighbors[i].append(j)
-    
-    # Follow edges to find cycles. Each time a new cycle is found, keep track
-    # of the shortest cycle found so far and restart from an unvisited node.
-    unvisited = set(node_neighbors)
-    shortest = None
-    while unvisited:
-        cycle = []
-        neighbors = list(unvisited)
-        while neighbors:
-            current = neighbors.pop()
-            cycle.append(current)
-            unvisited.remove(current)
-            neighbors = [j for j in node_neighbors[current] if j in unvisited]
-        if shortest is None or len(cycle) < len(shortest):
-            shortest = cycle
-    
-    return shortest if shortest is not None else []
-
-class TSPCallback:
-    """Callback class implementing lazy constraints for the TSP. At MIPSOL
-    callbacks, solutions are checked for subtours and subtour elimination
-    constraints are added if needed."""
-    def __init__(self, nodes, x):
-        self.nodes = nodes
-        self.x = x
-    
-    def __call__(self, model, where):
-        """Callback entry point: call lazy constraints routine when new
-        solutions are found."""
-        if where == GRB.Callback.MIPSOL:
-            try:
-                self.eliminate_subtours(model)
-            except Exception as e:
-                print(f"Exception occurred in MIPSOL callback: {e}")
-                model.terminate()
-    
-    def eliminate_subtours(self, model):
-        """Extract the current solution, check for subtours, and formulate lazy
-        constraints to cut off the current solution if subtours are found.
-        Assumes we are at MIPSOL."""
-        values = model.cbGetSolution(self.x)
-        edges = [(i, j) for (i, j), v in values.items() if v > 0. and i != j]
-        
-        if not edges:
-            return
-            
-        tour = shortest_subtour(edges)
-        if len(tour) < len(self.nodes):
-            # add subtour elimination constraint for every pair of cities in tour
-            model.cbLazy(
-                gp.quicksum(self.x[i, j]  + self.x[j, i] for i, j in combinations(tour, 2)) <= len(tour) - 1
-            )
-
-'''
-#this solution gives 309 as optimal cost
 def shortest_subtour(edges, company_node=0):
     """Given a list of edges, return the shortest subtour (as a list of nodes)
     found by following those edges. It is assumed there is exactly one 'in'
@@ -79,22 +12,21 @@ def shortest_subtour(edges, company_node=0):
     if not edges:
         return []
     
-    # Create a mapping from each node to its neighbours
+    # vreate a mapping from each node to its neighbours
     node_neighbors = defaultdict(list)
     for i, j in edges:
         node_neighbors[i].append(j)
     
-    # Follow edges to find cycles. Each time a new cycle is found, keep track
+    # follow edges to find cycles. Each time a new cycle is found, keep track
     # of the shortest cycle found so far and restart from an unvisited node.
     visited = set()
     subtours = []
     
-    # Find all connected components
+    # find all connected components
     for start_node in node_neighbors:
         if start_node in visited or start_node == company_node:
             continue
-            
-        # DFS to find connected component
+    
         component = []
         stack = [start_node]
         
@@ -106,12 +38,12 @@ def shortest_subtour(edges, company_node=0):
             visited.add(current)
             component.append(current)
             
-            # Add unvisited neighbors to stack
+            # add unvisited neighbors to stack
             for neighbor in node_neighbors[current]:
                 if neighbor not in visited and neighbor != company_node:
                     stack.append(neighbor)
         
-        # If we found a component with at least 2 nodes, it's a subtour
+        # ff we found a component with at least 2 nodes, it's a subtour
         if len(component) >= 2:
             subtours.append(component)
     
@@ -141,7 +73,7 @@ class TSPCallback:
         Assumes we are at MIPSOL."""
         values = model.cbGetSolution(self.y_vars)
         edges = [(i, j) for (i, j), v in values.items() if v > 0.5]
-        # Find subtours (cycles not including company node 0)
+        # find subtours (cycles not including company node 0)
         subtours = shortest_subtour(edges, company_node=0)
         
         for subtour in subtours:
@@ -154,11 +86,12 @@ class TSPCallback:
 class solver_343420_331202(AbstractSolver):
     def __init__(self, env):
         super().__init__(env)
-        self.name = 'solver_343420_331202'
+        self.name = 'DummySolver'
+        self.name2 = 'class solver_343420_331202'
     
     def print_solution_edges(self,Y_sol):
         n = Y_sol.shape[0]
-        print(f"Solution model {self.name}:")
+        print(f"Solution of the model '{self.name2}' :")
         for i in range(n):
             for j in range(n):
                 if Y_sol[i][j] == 1:
@@ -175,9 +108,9 @@ class solver_343420_331202(AbstractSolver):
         n_deposits = service.shape[0]
         n_supermarkets = service.shape[1]
         
-        model = gp.Model(self.name)
+        model = gp.Model(self.name2)
         
-        #-- decision variables--
+        #decision variables
 
         # X[i] = 1 if deposit i is built, 0 otherwise
         X = model.addVars(n_deposits, vtype=GRB.BINARY, name="deposit")
@@ -244,11 +177,9 @@ class solver_343420_331202(AbstractSolver):
             model.addConstr(Y[0,j] <= X[j-1], f"company_to_deposit_{j}")
 
         
-        # subtour elimination with callback
+        # subtour elimination with callback similar to guroby website example
         model.Params.LazyConstraints = 1
-        nodes = list(range(1, n_deposits + 1))  # all possible deposits
-        # cb = TSPCallback(nodes, Y)
-        cb = TSPCallback( Y)
+        cb = TSPCallback(Y)
         model.optimize(cb)
         
         if model.status == GRB.OPTIMAL:
@@ -257,7 +188,6 @@ class solver_343420_331202(AbstractSolver):
             # get the values of X from the solver
             X_sol = []
             for i in range(n_deposits):
-                # X_sol.append(round(X[i].x))
                 X_sol.append(X[i].x)
 
             X_sol = np.array(X_sol, dtype=int)
@@ -268,7 +198,6 @@ class solver_343420_331202(AbstractSolver):
             for i in range(n_deposits + 1):
                 for j in range(n_deposits + 1):
                     if i != j and (i, j) in Y:
-                        # Y_sol[i][j] = round(Y[i, j].x)
                         Y_sol[i][j] = Y[i, j].x
             
             self.print_solution_edges(Y_sol)
